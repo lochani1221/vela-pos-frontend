@@ -1,3 +1,5 @@
+
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import PayMethodTile from '../components/PayMethodTile';
@@ -16,25 +18,44 @@ const PAY_METHODS = [
 
 const TIP_OPTIONS = [0, 5, 10, 15, 'custom'];
 
+
+// (add this import at the top of the file, alongside your other React imports)
 export default function PosPayment() {
   const navigate = useNavigate();
   const { items, customer, checkout, totals, updateCheckout, appendCashDigit, completeOrder } =
     useCart();
 
-  // Guard: if someone lands here with an empty cart (e.g. page refresh), send them back
+  // Guard: if someone lands here with an empty cart (e.g. page refresh, or after
+  // completing an order), send them back. This must run in an effect, not during
+  // render, otherwise it can race with the receipt navigation.
+  useEffect(() => {
   if (items.length === 0) {
     navigate('/billing');
-    return null;
+  }
+  // Intentionally empty dependency array - this should only run once, when the
+  // page first loads. If it re-ran every time `items` changes, it would also
+  // fire the moment completeOrder() clears the cart, redirecting you back to
+  // /billing instead of letting the receipt navigation happen.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+  if (items.length === 0) {
+    return null; // render nothing while the effect above redirects
   }
 
   const isSplit = checkout.paymentMethod === 'Split';
   const splitTotal = Number(checkout.splitCash || 0) + Number(checkout.splitCard || 0);
   const splitCovers = splitTotal >= totals.grandTotal - 0.5;
 
-  const cashEntered = Number(checkout.cashTendered || 0);
-  const cashCovers = checkout.paymentMethod !== 'Cash' || cashEntered >= totals.grandTotal - 0.5;
+//   const cashEntered = Number(checkout.cashTendered || 0);
+//   const cashCovers = checkout.paymentMethod !== 'Cash' || cashEntered >= totals.grandTotal - 0.5;
 
-  const canComplete = isSplit ? splitCovers : cashCovers;
+//   const canComplete = isSplit ? splitCovers : cashCovers;
+
+// Only Split Payment strictly requires the amounts to cover the total.
+// Cash/Card/QR/Gift Card/Loyalty are always completable in this demo -
+// the keypad is there for record-keeping, not a hard gate.
+const canComplete = isSplit ? splitCovers : true;
 
   function handleComplete() {
     if (!canComplete) return;
