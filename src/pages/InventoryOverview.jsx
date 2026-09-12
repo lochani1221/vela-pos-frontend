@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import SubTabs from '../components/SubTabs';
 import Pill from '../components/Pill';
@@ -5,12 +6,14 @@ import { INVENTORY_STATS, LOW_STOCK_ALERTS, DAMAGED_EXPIRED } from '../data/inve
 import { INVENTORY_TABS } from '../data/inventoryTabs';
 
 export default function InventoryOverview() {
+  const navigate = useNavigate();
+
   function handleStockAdjustment() {
-    console.log('Open stock adjustment form');
+    navigate('/inventory/adjustment');
   }
 
   function handleReorder(item) {
-    console.log('Reorder:', item.product);
+    navigate('/inventory/adjustment', { state: { productName: item.product } });
   }
 
   return (

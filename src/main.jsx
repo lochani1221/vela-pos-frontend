@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import './styles/global.css';
 import './styles/ui.css';
 import './styles/calendar.css';
+import './styles/pos.css';
 import App from './App.jsx';
 
 createRoot(document.getElementById('root')).render(

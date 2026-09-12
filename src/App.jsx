@@ -1,6 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
 import AppLayout from './layouts/AppLayout';
-import Placeholder from './pages/Placeholder';
 import ServiceCatalog from './pages/ServiceCatalog';
 import ServiceDetail from './pages/ServiceDetail';
 import StaffList from './pages/StaffList';
@@ -13,19 +12,21 @@ import AppointmentsWeekly from './pages/AppointmentsWeekly';
 import ProductList from './pages/ProductList1';
 import ProductDetail from './pages/ProductDetail';
 import InventoryOverview from './pages/InventoryOverview';
+import StockAdjustmentForm from './pages/StockAdjustmentForm';
+import PosBilling from './pages/PosBilling';
+import PosPayment from './pages/PosPayment';
+import PosReceipt from './pages/PosReceipt';
+import { CartProvider } from './context/CartContext';
+import Placeholder from './pages/Placeholder';
 
 function App() {
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
+    <CartProvider>
+      <Routes>
+        <Route element={<AppLayout />}>
         {/* Built pages */}
         <Route path="/services" element={<ServiceCatalog />} />
         <Route path="/services/:id" element={<ServiceDetail />} />
-
-        {/* Placeholder routes - swap these for real pages as you build each module */}
-        <Route path="/services" element={<ServiceCatalog />} />
-        <Route path="/services/:id" element={<ServiceDetail />} />
-
         <Route path="/staff" element={<StaffList />} />
         <Route path="/staff/:id" element={<StaffDetail />} />
         <Route path="/staff/attendance" element={<Placeholder title="Attendance" />} />
@@ -36,30 +37,24 @@ function App() {
         <Route path="/staff/performance" element={<Placeholder title="Performance" />} />
         <Route path="/staff/targets" element={<Placeholder title="Sales Targets" />} />
 
+        {/* Placeholder routes - swap these for real pages as you build each module */}
+        <Route path="/" element={<Placeholder title="Dashboard" />} />
         <Route path="/customers" element={<CustomerList />} />
         <Route path="/customers/new" element={<CustomerForm />} />
         <Route path="/customers/:id" element={<CustomerProfile />} />
         <Route path="/customers/:id/edit" element={<CustomerForm />} />
-
         <Route path="/appointments" element={<AppointmentsDaily />} />
         <Route path="/appointments/weekly" element={<AppointmentsWeekly />} />
         <Route path="/appointments/monthly" element={<Placeholder title="Monthly Schedule (send me this HTML next)" />} />
-
+        <Route path="/billing" element={<PosBilling />} />
+        <Route path="/billing/payment" element={<PosPayment />} />
+        <Route path="/billing/receipt" element={<PosReceipt />} />
         <Route path="/products" element={<ProductList />} />
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/inventory" element={<InventoryOverview />} />
+        <Route path="/inventory/adjustment" element={<StockAdjustmentForm />} />
         <Route path="/inventory/stock-movement" element={<Placeholder title="Stock Movement" />} />
         <Route path="/inventory/purchase-orders" element={<Placeholder title="Purchase Orders" />} />
-        
-        <Route path="/" element={<Placeholder title="Dashboard" />} />
-
-
-      
-
-      
-        
-        <Route path="/billing" element={<Placeholder title="Billing / POS" />} />
-      
         <Route path="/suppliers" element={<Placeholder title="Suppliers" />} />
         <Route path="/loyalty" element={<Placeholder title="Loyalty" />} />
         <Route path="/gift-vouchers" element={<Placeholder title="Gift Vouchers" />} />
@@ -75,7 +70,8 @@ function App() {
         <Route path="/ai-assistant" element={<Placeholder title="AI Assistant" />} />
         <Route path="/admin" element={<Placeholder title="Admin Settings" />} />
       </Route>
-    </Routes>
+      </Routes>
+    </CartProvider>
   );
 }
 
