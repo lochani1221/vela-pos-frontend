@@ -32,7 +32,7 @@ export default function AppointmentsDaily() {
           <StatusLegend />
         </CalendarToolbar>
       </div>
-
+    <div className="calendar-scroll">
       <div className="day-grid">
         <div className="col-head"></div>
         <div className="col-head">All Staff</div>
@@ -45,6 +45,7 @@ export default function AppointmentsDaily() {
           </Fragment>
         ))}
       </div>
+    </div>  
     </>
   );
 }

@@ -28,6 +28,7 @@ export default function AppointmentsWeekly() {
         <StatusLegend />
       </CalendarToolbar>
 
+    <div className="calendar-scroll">
       <div className="week-grid">
         <div className="col-head"></div>
         {WEEK_DAYS.map((day) => (
@@ -44,6 +45,7 @@ export default function AppointmentsWeekly() {
           </Fragment>
         ))}
       </div>
+    </div>  
     </>
   );
 }
