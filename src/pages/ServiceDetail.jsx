@@ -1,30 +1,63 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Pill from '../components/Pill';
 import Tag from '../components/Tag';
-import { getServiceById, SERVICE_CATEGORIES, ROOMS } from '../data/services';
+import { SERVICE_CATEGORIES, ROOMS } from '../data/services';
+import { fetchServiceById, updateService } from '../api/servicesApi';
 
 export default function ServiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const service = getServiceById(id);
 
-  const [form, setForm] = useState(() =>
-    service
-      ? {
-          name: service.name,
-          category: service.category,
-          duration: parseInt(service.duration, 10) || 0,
-          price: service.price,
-          commission: service.commission,
-          room: service.room,
-          description: service.description || '',
-          requiredProducts: service.requiredProducts || [],
-          staff: service.staff || [],
+  const [service, setService] = useState(null);
+  const [form, setForm] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchServiceById(id)
+      .then((data) => {
+        setService(data);
+        if (data) {
+          setForm({
+            name: data.name,
+            category: data.category,
+            duration: parseInt(data.duration, 10) || 0,
+            price: data.price,
+            commission: data.commission,
+            room: data.room,
+            description: data.description || '',
+            requiredProducts: data.requiredProducts || [],
+            staff: data.staff || [],
+          });
         }
-      : null
-  );
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader eyebrow="Services" title="Loading..." />
+        <p style={{ color: 'var(--ink-soft)' }}>Loading service...</p>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <PageHeader eyebrow="Services" title="Error" />
+        <div className="panel">
+          <p style={{ color: 'var(--bad)' }}>Failed to load: {error}</p>
+        </div>
+      </>
+    );
+  }
 
   if (!service || !form) {
     return (
@@ -60,9 +93,17 @@ export default function ServiceDetail() {
     }));
   }
 
-  function handleSave() {
-    console.log('Saving service:', { id: service.id, ...form });
-    navigate('/services');
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      await updateService(id, form);
+      navigate('/services');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDuplicate() {
@@ -75,10 +116,14 @@ export default function ServiceDetail() {
         <button className="btn btn-ghost" onClick={handleDuplicate}>
           Duplicate
         </button>
-        <button className="btn btn-primary" onClick={handleSave}>
-          Save Changes
+        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </PageHeader>
+
+      {error && (
+        <p style={{ color: 'var(--bad)', marginBottom: 12 }}>Failed to save: {error}</p>
+      )}
 
       <div className="grid-2" style={{ gridTemplateColumns: '1fr 340px', alignItems: 'start' }}>
         <div className="panel">

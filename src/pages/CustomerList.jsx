@@ -5,6 +5,7 @@ import Tabs from '../components/Tabs';
 import CustomerTable from '../components/CustomerTable';
 import { fetchCustomers } from '../api/customersApi';
 import { MEMBERSHIP_TIERS, CUSTOMER_STATS } from '../data/customers';
+import { USE_MOCK } from '../api/client';
 
 const TABS = ['All', ...MEMBERSHIP_TIERS];
 
@@ -33,7 +34,30 @@ export default function CustomerList() {
     });
   }, [customers, activeTab, search]);
 
-   function handleAddCustomer() {
+  // Real stats where we can calculate them from real data, honest
+  // placeholders where the backend doesn't provide enough info yet.
+  const stats = useMemo(() => {
+    if (USE_MOCK) return CUSTOMER_STATS;
+
+    const totalCustomers = customers.pageInfo?.totalElements ?? customers.length;
+
+    const avgLoyaltyPoints = customers.length
+      ? Math.round(customers.reduce((sum, c) => sum + (c.loyaltyPoints || 0), 0) / customers.length)
+      : 0;
+
+    return {
+      totalCustomers,
+      avgLoyaltyPoints,
+      // Not available from the backend yet - needs a dedicated stats
+      // endpoint (e.g. count of customers created this month, and a
+      // definition of "returning" vs "new"). Showing as unavailable
+      // rather than a fake number.
+      newThisMonth: null,
+      returningRate: null,
+    };
+  }, [customers]);
+
+  function handleAddCustomer() {
     navigate('/customers/new');
   }
 
@@ -57,22 +81,26 @@ export default function CustomerList() {
       <div className="grid-4" style={{ marginBottom: 26 }}>
         <div className="kpi-card">
           <div className="kpi-label">Total Customers</div>
-          <div className="kpi-value">{CUSTOMER_STATS.totalCustomers.toLocaleString('en-LK')}</div>
-          <div className="kpi-sub up">+{CUSTOMER_STATS.newThisMonth} this month</div>
+          <div className="kpi-value">{stats.totalCustomers.toLocaleString('en-LK')}</div>
+          {stats.newThisMonth != null ? (
+            <div className="kpi-sub up">+{stats.newThisMonth} this month</div>
+          ) : (
+            <div className="kpi-sub flat">data not available yet</div>
+          )}
         </div>
         <div className="kpi-card">
           <div className="kpi-label">New This Month</div>
-          <div className="kpi-value">{CUSTOMER_STATS.newThisMonth}</div>
-          <div className="kpi-sub flat">walk-in + online</div>
+          <div className="kpi-value">{stats.newThisMonth ?? '—'}</div>
+          <div className="kpi-sub flat">{stats.newThisMonth != null ? 'walk-in + online' : 'needs backend support'}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Returning Rate</div>
-          <div className="kpi-value">{CUSTOMER_STATS.returningRate}%</div>
-          <div className="kpi-sub up">▲ 4% vs last month</div>
+          <div className="kpi-value">{stats.returningRate != null ? `${stats.returningRate}%` : '—'}</div>
+          <div className="kpi-sub flat">{stats.returningRate != null ? '▲ 4% vs last month' : 'needs backend support'}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Avg. Loyalty Points</div>
-          <div className="kpi-value">{CUSTOMER_STATS.avgLoyaltyPoints}</div>
+          <div className="kpi-value">{stats.avgLoyaltyPoints}</div>
           <div className="kpi-sub flat">per active member</div>
         </div>
       </div>
