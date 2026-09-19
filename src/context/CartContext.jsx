@@ -4,8 +4,7 @@ const CartContext = createContext(null);
 
 const TAX_RATE = 0.08; // VAT 8%, matches your billing wireframe
 
-// Demo "currently selected customer" - in a real build this comes from
-// the customer search/selection flow. Swap this for null to start as a walk-in.
+
 const DEFAULT_CUSTOMER = {
   name: 'Dilrukshi Perera',
   initials: 'DP',
@@ -61,8 +60,7 @@ export function CartProvider({ children }) {
   }
 
   function applyPromo(code) {
-    // Placeholder: no real validation/backend yet, just marks a code as "applied"
-    // so the UI reflects it. Wire this to a real promo-code lookup later.
+    
     updateCheckout({ promoCode: code, promoApplied: Boolean(code) });
   }
 

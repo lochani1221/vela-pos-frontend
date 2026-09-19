@@ -14,10 +14,7 @@ function getInitials(fullName) {
 }
 
 // Backend's StaffResponse only has: id, fullName, role, contact, active.
-// Your pages expect a much richer object (branch, email, rating, status,
-// servicesAssigned, revenue stats, etc.) from the original mock data.
-// This fills in safe placeholders for anything the backend doesn't support
-// yet, and translates the ones that do have an equivalent.
+
 function normalizeStaff(s) {
   if (!s) return null;
   return {
@@ -27,15 +24,10 @@ function normalizeStaff(s) {
     role: s.role,
     contact: s.contact,
 
-    // Backend only has a true/false "active" flag - it can't represent
-    // "On Leave" as a separate state. We map true -> Active, false ->
-    // Inactive. If a staff member is marked "On Leave" in the UI, saving
-    // it will store them as Inactive on the backend (see createStaff/
-    // updateStaff below) - that distinction is lost until the backend
-    // adds a real status field.
+
     status: s.active ? 'Active' : 'Inactive',
 
-    // Not supported by the backend yet - placeholders so pages don't crash.
+    
     branch: '—',
     email: '—',
     rating: null,
@@ -52,7 +44,7 @@ function normalizeStaff(s) {
 export async function fetchStaff() {
   if (USE_MOCK) return mockDelay(MOCK_STAFF);
 
-  // Unlike customers, the staff list is NOT paginated - it's a plain array.
+  
   const response = await apiGet('/staff');
   return response.map(normalizeStaff);
 }
@@ -66,10 +58,7 @@ export async function fetchStaffById(id) {
   return normalizeStaff(response);
 }
 
-// blankStaff()/StaffForm sends { name, role, branch, email, contact, status,
-// servicesAssigned, ... } - only fullName, role, contact and active are
-// actually saved by the backend right now. The rest are accepted here but
-// silently dropped, since the backend has nowhere to store them yet.
+
 export async function createStaff(data) {
   if (USE_MOCK) {
     console.log('[MOCK] Would POST /staff', data);
@@ -100,5 +89,3 @@ export async function updateStaff(id, data) {
   return normalizeStaff(response);
 }
 
-// NOTE: No DELETE /api/v1/staff/{id} endpoint exists in the current backend
-// Swagger docs - delete is not available yet.

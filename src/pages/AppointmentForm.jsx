@@ -47,10 +47,7 @@ export default function AppointmentForm() {
     setSaving(true);
     setError(null);
     try {
-      // Backend expects a real Instant (needs timezone info, e.g. ending in
-      // "Z"). The datetime-local input gives plain local time with no
-      // timezone ("2026-08-26T09:30") - converting through a real Date
-      // object correctly turns it into UTC with the "Z" suffix.
+     
       const startTime = new Date(form.startTime).toISOString();
 
       await createAppointment({

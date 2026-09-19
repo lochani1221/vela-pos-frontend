@@ -8,8 +8,7 @@ import AppointmentBlock from '../components/AppointmentBlock';
 import CalendarViewSwitcher from '../components/CalendarViewSwitcher';
 import { fetchAppointmentsByDate, updateAppointmentStatus, toDateParam } from '../api/appointmentsApi';
 
-// Business hours shown on the grid. Matches the original mock's range
-// (9am-3pm). Add more entries here if you need a longer day.
+
 const TIME_SLOTS = [
   { label: '9:00', hour: 9 },
   { label: '10:00', hour: 10 },
@@ -44,10 +43,7 @@ export default function AppointmentsDaily() {
       .finally(() => setLoading(false));
   }, [selectedDate]);
 
-  // Groups appointments into the fixed hourly slots. NOTE: if two
-  // appointments fall in the same hour, only the first one found is shown -
-  // this grid only has one column ("All Staff"), so it can't display two at
-  // once yet. A future improvement would add one column per staff member.
+
   function getSlotAppointment(hour) {
     return appointments.find((a) => new Date(a.startTime).getHours() === hour) ?? null;
   }

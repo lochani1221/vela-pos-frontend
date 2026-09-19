@@ -1,10 +1,5 @@
 import { apiGet, apiPost, apiPatch } from './client';
 
-// ---- Helpers -------------------------------------------------------------
-
-// Backend status enum is uppercase with underscores (IN_PROGRESS, NO_SHOW).
-// Your components use the lowercase, no-underscore versions from
-// STATUS_CLASS in data/appointments.js (progress, noshow).
 const STATUS_TO_DISPLAY = {
   PENDING: 'pending',
   CONFIRMED: 'confirmed',
@@ -23,9 +18,7 @@ const STATUS_TO_BACKEND = {
   noshow: 'NO_SHOW',
 };
 
-// Backend's AppointmentResponse nests customer/staff/service as small
-// objects ({ id, fullName }), not flat strings. This flattens it into what
-// AppointmentBlock and the calendar grids expect.
+
 function normalizeAppointment(a) {
   if (!a) return null;
   return {

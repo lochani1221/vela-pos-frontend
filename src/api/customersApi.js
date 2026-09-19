@@ -83,9 +83,8 @@ export async function fetchCustomerById(id) {
 }
 
 // CustomerForm.jsx sends { name, mobile, email, ... } - only fullName,
-// mobile and email are actually saved by the backend right now. The other
-// fields (birthday, gender, membership, etc.) are accepted here but silently
-// dropped, since the backend has nowhere to store them yet.
+// mobile and email are actually saved by the backend 
+
 export async function createCustomer(data) {
   if (USE_MOCK) {
     console.log('[MOCK] Would POST /customers', data);
@@ -114,5 +113,3 @@ export async function updateCustomer(id, data) {
   return normalizeCustomer(response);
 }
 
-// NOTE: No DELETE /api/v1/customers/{id} endpoint exists in the current
-// backend Swagger docs - delete is not available yet.

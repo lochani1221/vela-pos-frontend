@@ -1,13 +1,6 @@
 import { STATUS_CLASS } from '../data/appointments';
 
-// Matches the exact transition rules in the backend's Appointment.java:
-// - confirm(): only from Pending
-// - checkIn(): only from Confirmed
-// - complete(): only from In Progress
-// - cancel()/markNoShow(): only from Pending, Confirmed, or In Progress
-// - nothing can transition back to Pending
-// - Completed, Cancelled, and No Show are all final - nothing further is
-//   allowed once an appointment reaches one of them.
+
 const VALID_NEXT_STATUSES = {
   pending: [
     { key: 'confirmed', label: 'Confirmed' },
@@ -38,8 +31,7 @@ const STATUS_LABELS = {
   noshow: 'No Show',
 };
 
-// onStatusChange is optional - pass it to make the block interactive
-// (used in Daily Schedule). Without it, the block just displays as before.
+
 export default function AppointmentBlock({ appt, onStatusChange }) {
   if (!appt) return null;
 

@@ -1,9 +1,6 @@
 // Mock data for now. Once the backend is ready, replace this with a fetch/axios
 // call in ServiceCatalog.jsx (e.g. GET /api/services) and drop this file.
-//
-// Extra fields below (description, requiredProducts, bookingsThisMonth, etc.)
-// are only used by ServiceDetail.jsx. Not every service needs them filled in -
-// ServiceDetail falls back to sensible defaults if they're missing.
+
 export const SERVICES = [
   { id: 1, name: 'Hair Cut', category: 'Hair', duration: '30 min', price: 1500, staff: ['Anushka', 'Kavindi'], room: 'Room 1', commission: 10 },
  {

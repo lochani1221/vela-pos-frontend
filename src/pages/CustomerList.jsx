@@ -34,8 +34,7 @@ export default function CustomerList() {
     });
   }, [customers, activeTab, search]);
 
-  // Real stats where we can calculate them from real data, honest
-  // placeholders where the backend doesn't provide enough info yet.
+ 
   const stats = useMemo(() => {
     if (USE_MOCK) return CUSTOMER_STATS;
 
@@ -49,9 +48,7 @@ export default function CustomerList() {
       totalCustomers,
       avgLoyaltyPoints,
       // Not available from the backend yet - needs a dedicated stats
-      // endpoint (e.g. count of customers created this month, and a
-      // definition of "returning" vs "new"). Showing as unavailable
-      // rather than a fake number.
+     
       newThisMonth: null,
       returningRate: null,
     };
