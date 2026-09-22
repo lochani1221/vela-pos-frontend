@@ -1,5 +1,4 @@
-
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import PayMethodTile from '../components/PayMethodTile';
@@ -7,54 +6,54 @@ import Keypad from '../components/Keypad';
 import { useCart } from '../context/CartContext';
 import { formatRs } from '../utils/format';
 
+// Only Cash, Card, and Split map to something the backend 
+// supports (payments: [{ method: 'CASH'|'CARD', amount }]). QR, Gift Card,
+// and Loyalty Points have been removed entirely, since the backend has no
+// equivalent for any of them.
 const PAY_METHODS = [
   { key: 'Cash', icon: '💵', label: 'Cash' },
   { key: 'Card', icon: '💳', label: 'Card' },
-  { key: 'QR', icon: '📱', label: 'LankaQR / PayHere' },
-  { key: 'Gift Card', icon: '🎁', label: 'Gift Card' },
   { key: 'Split', icon: '➗', label: 'Split Payment' },
-  { key: 'Loyalty', icon: '⭐', label: 'Loyalty Points' },
 ];
-
-const TIP_OPTIONS = [0, 5, 10, 15, 'custom'];
-
-
 
 export default function PosPayment() {
   const navigate = useNavigate();
   const { items, customer, checkout, totals, updateCheckout, appendCashDigit, completeOrder } =
     useCart();
 
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-  if (items.length === 0) {
-    navigate('/billing');
-  }
- 
-}, []);
+    if (items.length === 0) {
+      navigate('/billing');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (items.length === 0) {
-    return null; // render nothing while the effect above redirects
+    return null;
   }
 
   const isSplit = checkout.paymentMethod === 'Split';
   const splitTotal = Number(checkout.splitCash || 0) + Number(checkout.splitCard || 0);
-  const splitCovers = splitTotal >= totals.grandTotal - 0.5;
+  // Backend requires payments to add up to EXACTLY the total, not just cover it.
+  const splitMatches = Math.abs(splitTotal - totals.grandTotal) < 0.5;
 
-//   const cashEntered = Number(checkout.cashTendered || 0);
-//   const cashCovers = checkout.paymentMethod !== 'Cash' || cashEntered >= totals.grandTotal - 0.5;
+  const canComplete = isSplit ? splitMatches : true;
 
-//   const canComplete = isSplit ? splitCovers : cashCovers;
-
-// Only Split Payment strictly requires the amounts to cover the total.
-// Cash/Card/QR/Gift Card/Loyalty are always completable in this demo -
-// the keypad is there for record-keeping, not a hard gate.
-const canComplete = isSplit ? splitCovers : true;
-
-  function handleComplete() {
-    if (!canComplete) return;
-    completeOrder();
-    navigate('/billing/receipt');
+  async function handleComplete() {
+    if (!canComplete || saving) return;
+    setError(null);
+    setSaving(true);
+    try {
+      await completeOrder();
+      navigate('/billing/receipt');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -64,6 +63,10 @@ const canComplete = isSplit ? splitCovers : true;
           ← Back to Order
         </button>
       </PageHeader>
+
+      {error && (
+        <p style={{ color: 'var(--bad)', marginBottom: 12 }}>Checkout failed: {error}</p>
+      )}
 
       <div className="pay-grid">
         <div>
@@ -82,29 +85,6 @@ const canComplete = isSplit ? splitCovers : true;
             ))}
           </div>
 
-          <div className="section-label">Add a tip</div>
-          <div className="tip-row">
-            {TIP_OPTIONS.map((tip) => (
-              <div
-                key={tip}
-                className={checkout.tipPercent === tip ? 'tip-chip selected' : 'tip-chip'}
-                onClick={() => updateCheckout({ tipPercent: tip })}
-              >
-                {tip === 0 ? 'No Tip' : tip === 'custom' ? 'Custom' : `${tip}%`}
-              </div>
-            ))}
-          </div>
-          {checkout.tipPercent === 'custom' && (
-            <div className="field" style={{ marginTop: 12, maxWidth: 200 }}>
-              <label>Custom tip (Rs.)</label>
-              <input
-                type="number"
-                value={checkout.tipCustomAmount}
-                onChange={(e) => updateCheckout({ tipCustomAmount: Number(e.target.value) })}
-              />
-            </div>
-          )}
-
           {checkout.paymentMethod === 'Cash' && (
             <>
               <div className="section-label">Cash tendered</div>
@@ -122,6 +102,9 @@ const canComplete = isSplit ? splitCovers : true;
           {isSplit && (
             <>
               <div className="section-label">Split amounts</div>
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: -8, marginBottom: 8 }}>
+                Split Cash + Card to add up to exactly <strong>{formatRs(totals.grandTotal)}</strong>.
+              </p>
               <div className="split-inputs" style={{ padding: 0 }}>
                 <div className="field">
                   <label>Cash (Rs.)</label>
@@ -140,9 +123,11 @@ const canComplete = isSplit ? splitCovers : true;
                   />
                 </div>
               </div>
-              {!splitCovers && (
+              {!splitMatches && (
                 <p style={{ color: 'var(--warn)', fontSize: 12, marginTop: -6 }}>
-                  Split amounts don't cover the total yet.
+                  {splitTotal < totals.grandTotal
+                    ? `Rs. ${(totals.grandTotal - splitTotal).toFixed(2)} short - must add up to exactly ${formatRs(totals.grandTotal)}.`
+                    : `Rs. ${(splitTotal - totals.grandTotal).toFixed(2)} too much - must add up to exactly ${formatRs(totals.grandTotal)}.`}
                 </p>
               )}
             </>
@@ -158,30 +143,12 @@ const canComplete = isSplit ? splitCovers : true;
               <span>Subtotal</span>
               <span>{formatRs(totals.subtotal)}</span>
             </div>
-            {customer && (
+            {totals.discountAmount > 0 && (
               <div className="total-row">
                 <span>Discount</span>
                 <span>− {formatRs(totals.discountAmount)}</span>
               </div>
             )}
-            <div className="total-row">
-              <span>Tax (VAT 8%)</span>
-              <span>{formatRs(totals.tax)}</span>
-            </div>
-            {checkout.loyaltyRedeemed && (
-              <div className="total-row">
-                <span>Loyalty Redeemed</span>
-                <span>− {formatRs(totals.loyaltyDiscount)}</span>
-              </div>
-            )}
-            <div className="total-row">
-              <span>
-                Tip {checkout.tipPercent !== 0 && checkout.tipPercent !== 'custom'
-                  ? `(${checkout.tipPercent}%)`
-                  : ''}
-              </span>
-              <span>{formatRs(totals.tipAmount)}</span>
-            </div>
             <div className="total-row grand">
               <span>Total Due</span>
               <span>{formatRs(totals.grandTotal)}</span>
@@ -201,8 +168,8 @@ const canComplete = isSplit ? splitCovers : true;
             </div>
           )}
 
-          <button className="checkout-btn" disabled={!canComplete} onClick={handleComplete}>
-            Complete Payment ✓
+          <button className="checkout-btn" disabled={!canComplete || saving} onClick={handleComplete}>
+            {saving ? 'Saving...' : 'Complete Payment ✓'}
           </button>
         </div>
       </div>

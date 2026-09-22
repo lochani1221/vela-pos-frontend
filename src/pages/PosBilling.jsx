@@ -1,34 +1,69 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import PosItemTile from '../components/PosItemTile';
 import CartItemRow from '../components/CartItemRow';
 import { useCart } from '../context/CartContext';
-import { POS_CATEGORIES, POS_ITEMS } from '../data/posItems';
+import { fetchServices } from '../api/servicesApi';
+import { fetchCustomers } from '../api/customersApi';
+import { fetchStaff } from '../api/staffApi';
 import { formatRs } from '../utils/format';
 
 export default function PosBilling() {
   const navigate = useNavigate();
-  const { customer, items, checkout, totals, addItem, changeQty, updateCheckout, applyPromo } =
-    useCart();
+  const {
+    customer, setCustomer, cashier, setCashier,
+    items, checkout, totals, addItem, changeQty, updateCheckout,
+  } = useCart();
+
+  // Only real services are sellable - the backend has no product or
+  // package endpoints at all, so those categories are left out entirely
+
+  const [posCategories, setPosCategories] = useState(['All']);
+  const [posItems, setPosItems] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
-  const [promoInput, setPromoInput] = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([fetchServices(), fetchCustomers(), fetchStaff()])
+      .then(([serviceList, customerList, staffList]) => {
+        const realItems = serviceList.map((s) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          type: 'Service',
+          meta: `${s.duration} · ${s.category}`,
+          price: s.price,
+        }));
+        const realCategories = [...new Set(serviceList.map((s) => s.category))];
+        setPosItems(realItems);
+        setPosCategories(['All', ...realCategories]);
+        setCustomers(customerList);
+        setStaff(staffList.filter((s) => s.status === 'Active'));
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredItems = useMemo(() => {
-    return POS_ITEMS.filter((item) => {
+    return posItems.filter((item) => {
       const matchesCategory = activeCategory === 'All' || item.category === activeCategory;
       const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [activeCategory, search]);
-
-  function handleApplyPromo() {
-    applyPromo(promoInput);
-  }
+  }, [posItems, activeCategory, search]);
 
   function handleProceedToPayment() {
+    if (!cashier) {
+      alert('Please select a cashier before proceeding.');
+      return;
+    }
     navigate('/billing/payment');
   }
 
@@ -43,15 +78,14 @@ export default function PosBilling() {
           <div className="scan-bar">
             <input
               className="scan-input"
-              placeholder="🔍  Scan barcode or search service / product..."
+              placeholder="🔍  Search service..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <button className="scan-btn">📷 Scan</button>
           </div>
 
           <div className="pos-tabs">
-            {POS_CATEGORIES.map((cat) => (
+            {posCategories.map((cat) => (
               <div
                 key={cat}
                 className={cat === activeCategory ? 'pos-tab active' : 'pos-tab'}
@@ -62,17 +96,48 @@ export default function PosBilling() {
             ))}
           </div>
 
-          <div className="pos-grid">
-            {filteredItems.map((item) => (
-              <PosItemTile key={item.id} item={item} onAdd={addItem} />
-            ))}
-          </div>
+          {loading && <p style={{ color: 'var(--ink-soft)' }}>Loading services...</p>}
+          {error && <p style={{ color: 'var(--bad)' }}>Failed to load: {error}</p>}
+
+          {!loading && !error && (
+            <div className="pos-grid">
+              {filteredItems.map((item) => (
+                <PosItemTile key={item.id} item={item} onAdd={addItem} />
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="cart-panel">
           <div className="cart-head">
             <span className="title">Current Order</span>
             <span className="panel-meta">{items.length} items</span>
+          </div>
+
+          <div className="field" style={{ margin: '0 16px 8px' }}>
+            <label>Cashier (required)</label>
+            <select
+              value={cashier?.id || ''}
+              onChange={(e) => setCashier(staff.find((s) => s.id === e.target.value) || null)}
+            >
+              <option value="">Select cashier...</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field" style={{ margin: '0 16px 8px' }}>
+            <label>Customer (optional)</label>
+            <select
+              value={customer?.id || ''}
+              onChange={(e) => setCustomer(customers.find((c) => c.id === e.target.value) || null)}
+            >
+              <option value="">Walk-in (no customer)</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
 
           {customer && (
@@ -83,7 +148,7 @@ export default function PosBilling() {
                   {customer.name}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
-                  {customer.points.toLocaleString('en-LK')} pts · {customer.membership}
+                  {customer.loyaltyPoints.toLocaleString('en-LK')} pts
                 </div>
               </div>
             </div>
@@ -91,7 +156,7 @@ export default function PosBilling() {
 
           <div className="cart-items">
             {items.length === 0 ? (
-              <div className="cart-empty">Tap a service or product to add it to the order.</div>
+              <div className="cart-empty">Tap a service to add it to the order.</div>
             ) : (
               items.map((item) => (
                 <CartItemRow
@@ -104,54 +169,30 @@ export default function PosBilling() {
             )}
           </div>
 
-          <div className="promo-row">
+          <div className="field" style={{ margin: '0 16px 8px' }}>
+            <label>Discount (Rs.)</label>
             <input
-              placeholder="Promo code or gift card"
-              value={promoInput}
-              onChange={(e) => setPromoInput(e.target.value)}
+              type="number"
+              value={checkout.discountAmount}
+              onChange={(e) => updateCheckout({ discountAmount: e.target.value })}
+              placeholder="0"
             />
-            <button onClick={handleApplyPromo}>
-              {checkout.promoApplied ? 'Applied ✓' : 'Apply'}
-            </button>
           </div>
-
-          {customer && (
-            <div
-              className="loyalty-row"
-              onClick={() => updateCheckout({ loyaltyRedeemed: !checkout.loyaltyRedeemed })}
-            >
-              <span>
-                Redeem {customer.points.toLocaleString('en-LK')} loyalty points (−
-                {formatRs(Math.min(customer.points, totals.subtotal))})
-              </span>
-              <span className={checkout.loyaltyRedeemed ? 'switch on' : 'switch'} />
-            </div>
-          )}
 
           <div className="cart-totals">
             <div className="total-row">
               <span>Subtotal</span>
               <span>{formatRs(totals.subtotal)}</span>
             </div>
-            {customer && (
+            {totals.discountAmount > 0 && (
               <div className="total-row">
-                <span>Discount ({customer.membership} {customer.discountPercent * 100}%)</span>
+                <span>Discount</span>
                 <span>− {formatRs(totals.discountAmount)}</span>
-              </div>
-            )}
-            <div className="total-row">
-              <span>Tax (VAT 8%)</span>
-              <span>{formatRs(totals.tax)}</span>
-            </div>
-            {checkout.loyaltyRedeemed && (
-              <div className="total-row">
-                <span>Loyalty Redeemed</span>
-                <span>− {formatRs(totals.loyaltyDiscount)}</span>
               </div>
             )}
             <div className="total-row grand">
               <span>Total Due</span>
-              <span>{formatRs(totals.preTipTotal)}</span>
+              <span>{formatRs(totals.grandTotal)}</span>
             </div>
           </div>
 

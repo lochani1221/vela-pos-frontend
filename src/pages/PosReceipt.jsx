@@ -25,24 +25,19 @@ export default function PosReceipt() {
 
   const {
     invoiceNumber,
-    date,
+    dateObj,
     customer,
+    cashier,
     items,
     subtotal,
     discountAmount,
     tax,
-    loyaltyDiscount,
-    tipAmount,
     grandTotal,
-    paymentMethod,
-    cashTendered,
-    splitCash,
-    splitCard,
-    pointsEarned,
+    payments,
   } = lastOrder;
 
-  const dateStr = date.toLocaleDateString('en-LK', { day: '2-digit', month: 'short', year: 'numeric' });
-  const timeStr = date.toLocaleTimeString('en-LK', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = dateObj.toLocaleDateString('en-LK', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = dateObj.toLocaleTimeString('en-LK', { hour: '2-digit', minute: '2-digit' });
 
   function handlePrint() {
     window.print();
@@ -86,51 +81,37 @@ export default function PosReceipt() {
           <hr />
           <div className="receipt-line"><span>Invoice</span><span>{invoiceNumber}</span></div>
           <div className="receipt-line"><span>Date</span><span>{dateStr}, {timeStr}</span></div>
-          <div className="receipt-line"><span>Cashier</span><span>Receptionist — Nimali</span></div>
+          {cashier && (
+            <div className="receipt-line"><span>Cashier</span><span>{cashier.name}</span></div>
+          )}
           {customer && (
             <div className="receipt-line"><span>Customer</span><span>{customer.name}</span></div>
           )}
           <hr />
-          {items.map((item) => (
-            <div className="receipt-line" key={item.id}>
-              <span>{item.name}{item.qty > 1 ? ` x${item.qty}` : ''}</span>
-              <span>{(item.price * item.qty).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
+          {items.map((item, i) => (
+            <div className="receipt-line" key={i}>
+              <span>{item.description}{item.quantity > 1 ? ` x${item.quantity}` : ''}</span>
+              <span>{item.lineTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
             </div>
           ))}
           <hr />
           <div className="receipt-line"><span>Subtotal</span><span>{subtotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span></div>
-          {customer && (
+          {discountAmount > 0 && (
             <div className="receipt-line">
-              <span>Discount ({customer.membership} {customer.discountPercent * 100}%)</span>
+              <span>Discount</span>
               <span>-{discountAmount.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
             </div>
           )}
-          {loyaltyDiscount > 0 && (
-            <div className="receipt-line"><span>Loyalty Redeemed</span><span>-{loyaltyDiscount.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span></div>
-          )}
-          <div className="receipt-line"><span>VAT (8%)</span><span>{tax.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span></div>
-          {tipAmount > 0 && (
-            <div className="receipt-line"><span>Tip</span><span>{tipAmount.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span></div>
-          )}
+          <div className="receipt-line"><span>VAT</span><span>{tax.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span></div>
           <hr />
           <div className="receipt-line total"><span>Total Paid</span><span>{formatRs(grandTotal)}</span></div>
           <hr />
-          {paymentMethod === 'Split' ? (
-            <>
-              <div className="receipt-line"><span>Cash</span><span>{Number(splitCash).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span></div>
-              <div className="receipt-line"><span>Card</span><span>{Number(splitCard).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span></div>
-            </>
-          ) : paymentMethod === 'Cash' ? (
-            <div className="receipt-line"><span>Cash Tendered</span><span>{Number(cashTendered || grandTotal).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span></div>
-          ) : (
-            <div className="receipt-line"><span>{paymentMethod}</span><span>{grandTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span></div>
-          )}
-          {customer && (
-            <>
-              <hr />
-              <div className="receipt-line"><span>Points Earned</span><span>+{pointsEarned} pts</span></div>
-            </>
-          )}
+          {payments.map((p, i) => (
+            <div className="receipt-line" key={i}>
+              <span>{p.method === 'CASH' ? 'Cash' : 'Card'}</span>
+              <span>{p.amount.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
+            </div>
+          ))}
           <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-soft)', marginTop: 14 }}>
             Thank you for visiting VELA 💜
             <br />

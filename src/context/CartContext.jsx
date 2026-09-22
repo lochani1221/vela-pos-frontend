@@ -1,34 +1,27 @@
 import { createContext, useContext, useMemo, useState } from 'react';
+import { checkoutSale } from '../api/salesApi';
 
 const CartContext = createContext(null);
 
-const TAX_RATE = 0.08; // VAT 8%, matches your billing wireframe
 
-
-const DEFAULT_CUSTOMER = {
-  name: 'Dilrukshi Perera',
-  initials: 'DP',
-  points: 1420,
-  membership: 'Platinum',
-  discountPercent: 0.10,
-};
 
 function emptyCheckoutState() {
   return {
-    loyaltyRedeemed: false,
-    promoCode: '',
-    promoApplied: false,
-    tipPercent: 0, // 0 | 5 | 10 | 15 | 'custom'
-    tipCustomAmount: 0,
     paymentMethod: 'Cash',
     cashTendered: '',
     splitCash: 0,
     splitCard: 0,
+    discountAmount: 0, // the only discount the backend actually accepts - a plain Rs. amount
   };
 }
 
 export function CartProvider({ children }) {
-  const [customer] = useState(DEFAULT_CUSTOMER);
+  // Real customer/cashier records selected in PosBilling.jsx (via
+  // fetchCustomers/fetchStaff) - null customer means walk-in (backend
+  // allows customerId to be omitted). cashier is required by the backend.
+  const [customer, setCustomer] = useState(null);
+  const [cashier, setCashier] = useState(null);
+
   const [items, setItems] = useState([]);
   const [checkout, setCheckout] = useState(emptyCheckoutState());
   const [lastOrder, setLastOrder] = useState(null);
@@ -59,11 +52,6 @@ export function CartProvider({ children }) {
     setCheckout((prev) => ({ ...prev, ...patch }));
   }
 
-  function applyPromo(code) {
-    
-    updateCheckout({ promoCode: code, promoApplied: Boolean(code) });
-  }
-
   function appendCashDigit(digit) {
     setCheckout((prev) => {
       if (digit === '⌫') return { ...prev, cashTendered: prev.cashTendered.slice(0, -1) };
@@ -72,51 +60,68 @@ export function CartProvider({ children }) {
     });
   }
 
+ 
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-    const discountAmount = customer ? subtotal * customer.discountPercent : 0;
-    const tax = (subtotal - discountAmount) * TAX_RATE;
-    const loyaltyDiscount =
-      checkout.loyaltyRedeemed && customer ? Math.min(customer.points, subtotal) : 0;
-    const preTipTotal = subtotal - discountAmount + tax - loyaltyDiscount;
-    const tipAmount =
-      checkout.tipPercent === 'custom'
-        ? Number(checkout.tipCustomAmount) || 0
-        : preTipTotal * (checkout.tipPercent / 100);
-    const grandTotal = preTipTotal + tipAmount;
+    const discountAmount = Number(checkout.discountAmount) || 0;
+    const grandTotal = subtotal - discountAmount;
 
-    return { subtotal, discountAmount, tax, loyaltyDiscount, preTipTotal, tipAmount, grandTotal };
-  }, [items, customer, checkout.loyaltyRedeemed, checkout.tipPercent, checkout.tipCustomAmount]);
+    return { subtotal, discountAmount, grandTotal };
+  }, [items, checkout.discountAmount]);
 
-  function completeOrder() {
-    const pointsEarned = Math.round(totals.grandTotal * 0.01); // simple 1% earn rate, placeholder
+  
+  function buildPayments() {
+    const amount = totals.grandTotal;
+    if (checkout.paymentMethod === 'Split') {
+      const payments = [];
+      if (Number(checkout.splitCash) > 0) payments.push({ method: 'CASH', amount: Number(checkout.splitCash) });
+      if (Number(checkout.splitCard) > 0) payments.push({ method: 'CARD', amount: Number(checkout.splitCard) });
+      return payments;
+    }
+    if (checkout.paymentMethod === 'Card') {
+      return [{ method: 'CARD', amount }];
+    }
+    return [{ method: 'CASH', amount }];
+  }
 
-    const order = {
-      invoiceNumber: `INV-${Math.floor(3000 + Math.random() * 999)}`,
-      date: new Date(),
-      customer,
-      items: [...items],
-      ...totals,
-      paymentMethod: checkout.paymentMethod,
-      cashTendered: checkout.cashTendered,
-      splitCash: checkout.splitCash,
-      splitCard: checkout.splitCard,
-      pointsEarned,
+  // Actually saves the sale to the backend. Throws on failure so the
+  // calling page (PosPayment.jsx) can show an error instead of navigating
+  // to a receipt for an order that was never really saved.
+  async function completeOrder() {
+    if (!cashier) {
+      throw new Error('Please select a cashier before completing the sale.');
+    }
+    if (items.some((i) => i.type !== 'Service')) {
+      throw new Error('Only services can be sold right now - product/package checkout is not yet supported by the backend.');
+    }
+
+    const payload = {
+      customerId: customer?.id,
+      cashierId: cashier.id,
+      items: items.map((i) => ({ serviceId: i.id, quantity: i.qty })),
+      discountAmount: totals.discountAmount,
+      payments: buildPayments(),
     };
 
-    setLastOrder(order);
+    const savedSale = await checkoutSale(payload);
+
+    setLastOrder(savedSale);
     setItems([]);
     setCheckout(emptyCheckoutState());
-    return order;
+    return savedSale;
   }
 
   function startNewSale() {
     setItems([]);
     setCheckout(emptyCheckoutState());
+    setCustomer(null);
   }
 
   const value = {
     customer,
+    setCustomer,
+    cashier,
+    setCashier,
     items,
     checkout,
     totals,
@@ -125,7 +130,6 @@ export function CartProvider({ children }) {
     changeQty,
     removeItem,
     updateCheckout,
-    applyPromo,
     appendCashDigit,
     completeOrder,
     startNewSale,
